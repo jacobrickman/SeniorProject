@@ -1020,10 +1020,32 @@ public:
 		return -1;
 	}
 
+	bool drawRoad(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog, vec4 coords)
+	{
+		M->pushMatrix();
+			M->translate(vec3(coords));
+			M->rotate(coords[3], vec3(0, 1, 0));
+			M->scale(vec3(ROAD_SIZE, ROAD_SIZE, ROAD_SIZE));
+			SetMaterial(7);
+			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+			road1->draw(prog);
+			if (testClick)
+			{
+				vec3 ray = computeRay(P);
+				if (road1->wasHit(ray, eye, M->topMatrix()))
+				{
+					M->popMatrix();
+					testClick = false;
+					return true;
+				}
+			}
+		M->popMatrix();
+		return false;
+	}
+
 	bool drawRoadsOffASettlement(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog, int index, int settlementVert)
 	{
 		std::vector<int> branchRoads = board->roadsOffABuilding(settlementVert, playerList[index].getColor());
-		vec3 ray;
 
 		passViewMatrix(prog);
 
@@ -1037,25 +1059,13 @@ public:
 			{
 				vec4 coords = getRoadCoordinates(branchRoads[i], hexCoordinates[hexIndex]);
 
-				M->pushMatrix();
-				M->translate(vec3(coords));
-				M->rotate(coords[3], vec3(0, 1, 0));
-				M->scale(vec3(ROAD_SIZE, ROAD_SIZE, ROAD_SIZE));
-				SetMaterial(7);
-				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-				road1->draw(prog);
-				if (testClick)
+				if (drawRoad(P, M, prog, coords))
 				{
-					ray = computeRay(P);
-					if (road1->wasHit(ray, eye, M->topMatrix()))
-					{
-						board->buildARoad(branchRoads[i], playerList[index].getColor());
-						testClick = false;
-						prog->unbind();
-						return true;
-					}
+
+					board->buildARoad(branchRoads[i], playerList[index].getColor());
+					prog->unbind();
+					return true;
 				}
-				M->popMatrix();
 			}
 		}
 
@@ -1207,7 +1217,6 @@ public:
 	{
 		auto V = make_shared<MatrixStack>();
 		std::vector<int> possibleEdges;
-		vec3 ray;
 		
 		possibleEdges = board->possibleRoadPositions(curPlayer->getColor());
 
@@ -1234,37 +1243,25 @@ public:
 				if (hexIndex != -1)
 				{
 					vec4 coords = getRoadCoordinates(possibleEdges[i], hexCoordinates[hexIndex]);
-					M->pushMatrix();
-					M->translate(vec3(coords));
-					M->rotate(coords[3], vec3(0, 1, 0));
-					M->scale(vec3(ROAD_SIZE, ROAD_SIZE, ROAD_SIZE));
-					SetMaterial(7);
-					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-					road1->draw(prog);
-					if (testClick)
+
+					if (drawRoad(P, M, prog, coords))
 					{
-						ray = computeRay(P);
-						if (road1->wasHit(ray, eye, M->topMatrix()))
+						std::cout << "Build Road at " + std::to_string(possibleEdges[i]) << std::endl;
+						if (!board->buildARoad(possibleEdges[i], curPlayer->getColor()))
 						{
-							std::cout << "Build Road at " + std::to_string(possibleEdges[i]) << std::endl;
-							if (!board->buildARoad(possibleEdges[i], curPlayer->getColor()))
-							{
-								MyEnum::print("Something wrong with buildARoad(GameBoard) at edge: " + std::to_string(possibleEdges[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
-							}
-
-							if (gameState != MyEnum::ROAD_BUILDING_1 && gameState != MyEnum::ROAD_BUILDING_2)
-							{
-								if (!curPlayer->buildRoad())
-								{
-									MyEnum::print("Something wrong with buildRoad(Player) at edge: " + std::to_string(possibleEdges[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
-								}
-							}
-							gameState = nextState;
-							testClick = false;
+							MyEnum::print("Something wrong with buildARoad(GameBoard) at edge: " + std::to_string(possibleEdges[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
 						}
-					}
-					M->popMatrix();
 
+						if (gameState != MyEnum::ROAD_BUILDING_1 && gameState != MyEnum::ROAD_BUILDING_2)
+						{
+							if (!curPlayer->buildRoad())
+							{
+								MyEnum::print("Something wrong with buildRoad(Player) at edge: " + std::to_string(possibleEdges[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
+							}
+						}
+						gameState = nextState;
+
+					}
 				}
 			}
 
@@ -1275,7 +1272,7 @@ public:
 			sphere->draw(prog);
 			if (testClick)
 			{
-				ray = computeRay(P);
+				vec3 ray = computeRay(P);
 				if (sphere->wasHit(ray, eye, M->topMatrix()))
 				{
 					std::cout << "Cancel" << std::endl;
