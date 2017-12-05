@@ -1121,14 +1121,16 @@ public:
 			}
 			else
 			{
+				passViewMatrix(prog);
+
 				prog->bind();
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-				V->pushMatrix();
-				V->loadIdentity();
-				V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-				glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-				V->popMatrix();
+				//V->pushMatrix();
+				//V->loadIdentity();
+				//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
+				//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+				//V->popMatrix();
 
 				for (int i = 0; i < possibleVerts.size(); i++)
 				{
@@ -1227,14 +1229,16 @@ public:
 		}
 		else
 		{
+			passViewMatrix(prog);
+
 			prog->bind();
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-			V->pushMatrix();
-			V->loadIdentity();
-			V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-			glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-			V->popMatrix();
+			//V->pushMatrix();
+			//V->loadIdentity();
+			//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
+			//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+			//V->popMatrix();
 
 			for (int i = 0; i < possibleEdges.size(); i++)
 			{
@@ -1963,14 +1967,16 @@ public:
 		auto V = make_shared<MatrixStack>();
 		vec3 ray;
 
+		passViewMatrix(prog);
+
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-		V->pushMatrix();
-		V->loadIdentity();
-		V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-		V->popMatrix();
+		//V->pushMatrix();
+		//V->loadIdentity();
+		//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
+		//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+		//V->popMatrix();
 
 		//building sphere
 			M->pushMatrix();
@@ -2518,14 +2524,16 @@ public:
 		auto V = make_shared<MatrixStack>();
 		vec3 ray;
 
+		passViewMatrix(prog);
+
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-		V->pushMatrix();
-		V->loadIdentity();
-		V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-		V->popMatrix();
+		//V->pushMatrix();
+		//V->loadIdentity();
+		//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
+		//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
+		//V->popMatrix();
 
 		//settlement
 		if (curPlayer->canBuildSettlement())
