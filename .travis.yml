@@ -3,9 +3,9 @@ sudo: required
 
 addons:
   sonarcloud:
-    organization: "your_organization_key"
+    organization: jacobrickman-github
     token:
-      secure: "your_token_encrypted_with_travis_encrypt_tool"
+      secure: 7547812ea6854b4dd4124d048d26cfc625fd049a
 script:
   - build-wrapper-linux-x86-64 --out-dir bw-output make clean all
   - sonar-scanner
