@@ -1126,12 +1126,6 @@ public:
 				prog->bind();
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-				//V->pushMatrix();
-				//V->loadIdentity();
-				//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-				//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-				//V->popMatrix();
-
 				for (int i = 0; i < possibleVerts.size(); i++)
 				{
 					//std::cout << "Possible spot at: " + std::to_string(possibleVerts[i]) << std::endl;
@@ -1172,17 +1166,9 @@ public:
 				//cancel
 				M->pushMatrix();
 				M->translate(vec3(4, 0, -6));
-				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-				sphere->draw(prog);
-				if (testClick)
+				if (drawCancel(P, M, prog))
 				{
-					ray = computeRay(P);
-					if (sphere->wasHit(ray, eye, M->topMatrix()))
-					{
-						std::cout << "Cancel" << std::endl;
-						gameState = MyEnum::GAME;
-						testClick = false;
-					}
+					gameState = MyEnum::GAME;
 				}
 				M->popMatrix();
 
@@ -1234,12 +1220,6 @@ public:
 			prog->bind();
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-			//V->pushMatrix();
-			//V->loadIdentity();
-			//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-			//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-			//V->popMatrix();
-
 			for (int i = 0; i < possibleEdges.size(); i++)
 			{
 				//if () should check that the position is empty
@@ -1272,17 +1252,9 @@ public:
 			//cancel
 			M->pushMatrix();
 			M->translate(vec3(4, 0, -6));
-			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			sphere->draw(prog);
-			if (testClick)
+			if (drawCancel(P, M, prog))
 			{
-				vec3 ray = computeRay(P);
-				if (sphere->wasHit(ray, eye, M->topMatrix()))
-				{
-					std::cout << "Cancel" << std::endl;
-					gameState = MyEnum::GAME;
-					testClick = false;
-				}
+				gameState = MyEnum::GAME;
 			}
 			M->popMatrix();
 
@@ -1919,17 +1891,9 @@ public:
 			M->pushMatrix();
 			M->translate(vec3(0, 0, -6));
 			M->scale(.5);
-			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			sphere->draw(prog);
-			if (testClick)
+			if (drawCancel(P, M, prog))
 			{
-				vec3 ray = computeRay(P);
-				if (sphere->wasHit(ray, eye, M->topMatrix()))
-				{
-					std::cout << "Cancel" << std::endl;
-					gameState = MyEnum::GAME;
-					testClick = false;
-				}
+				gameState = MyEnum::GAME;
 			}
 			M->popMatrix();
 
@@ -1971,12 +1935,6 @@ public:
 
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-
-		//V->pushMatrix();
-		//V->loadIdentity();
-		//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-		//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-		//V->popMatrix();
 
 		//building sphere
 			M->pushMatrix();
@@ -2529,12 +2487,6 @@ public:
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
-		//V->pushMatrix();
-		//V->loadIdentity();
-		//V->lookAt(eye, lookAtPoint, vec3(0, 1, 0));
-		//glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
-		//V->popMatrix();
-
 		//settlement
 		if (curPlayer->canBuildSettlement())
 		{
@@ -2626,19 +2578,29 @@ public:
 		//cancel
 		M->pushMatrix();
 		M->translate(vec3(4, 0, -6));
+		if (drawCancel(P, M, prog))
+		{
+			gameState = MyEnum::GAME;
+		}
+		M->popMatrix();
+	}
+
+	bool drawCancel(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
+	{
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		sphere->draw(prog);
 		if (testClick)
 		{
-			ray = computeRay(P);
+			vec3 ray = computeRay(P);
 			if (sphere->wasHit(ray, eye, M->topMatrix()))
 			{
-				std::cout << "Cancel" << std::endl;
-				gameState = MyEnum::GAME;
-				testClick = false;
+				MyEnum::print("Cancel");
+				testClickY = false;
+				return true;
 			}
 		}
-		M->popMatrix();
+
+		return false;
 	}
 
 	bool wasHit(vec3 ray, vec3 eye, std::vector<mat4> matrices, std::vector<shared_ptr<Shape>> shapes)
