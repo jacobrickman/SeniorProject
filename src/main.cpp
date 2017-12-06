@@ -30,6 +30,7 @@ Winter 2017 - ZJW (Piddington texture write)
 #define ROAD_SIZE .5
 #define CITY_SIZE .2
 #define THIEF_SIZE .2
+#define SPEED .5f
 
 using namespace std;
 using namespace glm;
@@ -49,6 +50,7 @@ public:
 	std::shared_ptr<Program> hudProg0;
 	std::shared_ptr<Program> clickProg;
 	std::shared_ptr<Program> hudProg1;
+	std::shared_ptr<Program> toonProg;
 
 	std::shared_ptr<Texture> texture0;
 	std::shared_ptr<Texture> texture1;
@@ -90,6 +92,7 @@ public:
 	shared_ptr<Shape> yearPlenty;
 	shared_ptr<Shape> monopoly;
 	shared_ptr<Shape> victoryPoint;
+	shared_ptr<Shape> pawn;
 
 	//Game variables
 	//********************
@@ -156,13 +159,11 @@ public:
 	bool Moving = false;
 	int gMat = 0;
 
-	float cTheta = -1 * PI / 2;
 	bool mouseDown = false;
 
-	vec3 eye = vec3(0, 5, 0);
-	vec3 lookAtPoint = vec3(0, 3, -3);
-	//vec3 eye = vec3(0, 0, 0);
-	//vec3 lookAtPoint = vec3(0, 0, -1);
+	
+	vec3 eye = vec3(-1, 5, 13.5);
+	vec3 lookAtPoint = vec3(-1, 5, 12.5);
 
 	float alpha = PI, beta = 0;
 	
@@ -179,60 +180,86 @@ public:
 		{
 			gameState = MyEnum::GAME;
 		}
+		else if (key == GLFW_KEY_RIGHT_SHIFT && action == GLFW_PRESS)
+		{
+			if (curPlayer)
+			{
+				std::vector<MyEnum::Resource> add = std::vector<MyEnum::Resource>(5);
+				add[0] = MyEnum::wood;
+				add[1] = MyEnum::brick;
+				add[2] = MyEnum::wheat;
+				add[3] = MyEnum::wool;
+				add[4] = MyEnum::ore;
+				curPlayer->gainResourceCards(add);
+			}
+		}
+		else if (key == GLFW_KEY_SLASH && action == GLFW_PRESS)
+		{
+			MyEnum::print("LookAt: " + std::to_string(lookAtPoint[0]) + " " + std::to_string(lookAtPoint[1]) + " " + std::to_string(lookAtPoint[2]));
+			MyEnum::print("Eye: " + std::to_string(eye[0]) + " " + std::to_string(eye[1]) + " " + std::to_string(eye[2]));
+		}
 		else if (key == GLFW_KEY_M && action == GLFW_PRESS)
 		{
 			gMat = (gMat + 1) % 4;
 		}
 		else if (key == GLFW_KEY_A && action != GLFW_RELEASE)
 		{
-			cTheta = -.5;
-			vec3 view = lookAtPoint - eye;
+			vec3 view = normalize(lookAtPoint - eye);
 			vec3 strafe = cross(view, vec3(0, 1, 0));
-			lookAtPoint += cTheta * strafe;
-			eye += cTheta * strafe;
+			lookAtPoint -= SPEED * strafe;
+			eye -= SPEED * strafe;
 
 		}
 		else if (key == GLFW_KEY_D && action != GLFW_RELEASE)
 		{
-			cTheta = .5;
-			vec3 view = lookAtPoint - eye;
+			vec3 view = normalize(lookAtPoint - eye);
 			vec3 strafe = cross(view, vec3(0, 1, 0));
-			lookAtPoint += cTheta * strafe;
-			eye += cTheta * strafe;
+			lookAtPoint += SPEED * strafe;
+			eye += SPEED * strafe;
 		}
 		else if (key == GLFW_KEY_W && action != GLFW_RELEASE)
 		{
-			cTheta = .5;
-			vec3 view = lookAtPoint - eye;
+			vec3 view = normalize(lookAtPoint - eye);
 			if (freecamera)
 			{
-				eye += view * cTheta;
-				lookAtPoint += view * cTheta;
+				eye += view * SPEED;
+				lookAtPoint += view * SPEED;
 			}
 			else
 			{
 				vec3 strafe = cross(view, vec3(0, 1, 0));
 				vec3 strafe2 = cross(strafe, vec3(0, 1, 0));
-				lookAtPoint += -cTheta * strafe2;
-				eye += -cTheta * strafe2;
+				lookAtPoint -= SPEED * strafe2;
+				eye -= SPEED * strafe2;
 			}
 		}
 		else if (key == GLFW_KEY_S && action != GLFW_RELEASE)
 		{
-			cTheta = -.5;
-			vec3 view = lookAtPoint - eye;
+			vec3 view = normalize(lookAtPoint - eye);
 			if (freecamera)
 			{
-				eye += view * cTheta;
-				lookAtPoint += view * cTheta;
+				eye -= view * SPEED;
+				lookAtPoint -= view * SPEED;
 			}
 			else
 			{
 				vec3 strafe = cross(view, vec3(0, 1, 0));
 				vec3 strafe2 = cross(strafe, vec3(0, 1, 0));
-				lookAtPoint += -cTheta * strafe2;
-				eye += -cTheta * strafe2;
+				lookAtPoint += SPEED * strafe2;
+				eye += SPEED * strafe2;
 			}
+		}
+		else if (key == GLFW_KEY_MINUS && action != GLFW_RELEASE)
+		{
+			vec3 view = normalize(lookAtPoint - eye);
+			eye -= view * SPEED;
+			lookAtPoint -= view * SPEED;
+		}
+		else if (key == GLFW_KEY_EQUAL && action != GLFW_RELEASE)
+		{
+			vec3 view = normalize(lookAtPoint - eye);
+			eye += view * SPEED;
+			lookAtPoint += view * SPEED;
 		}
 		else if (key == GLFW_KEY_Q && action != GLFW_RELEASE) {
             lightPos[0] -= 1;
@@ -248,7 +275,7 @@ public:
 
 	void scrollCallback(GLFWwindow* window, double deltaX, double deltaY)
 	{
-		cTheta += (float) deltaX;
+
 	}
 
 	void mouseCallback(GLFWwindow *window, int button, int action, int mods)
@@ -309,7 +336,6 @@ public:
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 		GLSL::checkVersion();
 
-		cTheta = 0;
 		// Set background color.
 		glClearColor(80.0/255.0, 195.0/255.0, 1.0f, 1.0f);
 		// Enable z-buffer test.
@@ -338,6 +364,30 @@ public:
 		prog->addAttribute("vertPos");
 		prog->addAttribute("vertNor");
 		prog->addAttribute("vertTex");
+
+		toonProg = make_shared<Program>();
+		toonProg->setVerbose(true);
+		toonProg->setShaderNames(
+			resourceDirectory + "/toon_vert.glsl",
+			resourceDirectory + "/toon_frag.glsl");
+		if (! toonProg->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		toonProg->addUniform("P");
+		toonProg->addUniform("M");
+		toonProg->addUniform("V");
+		//prog->addUniform("MatAmb");
+		//prog->addUniform("MatDif");
+		//prog->addUniform("MatSpec");
+		//prog->addUniform("LightColor");
+		toonProg->addUniform("Lpos");
+		toonProg->addUniform("inColor");
+		//prog->addUniform("S");
+		toonProg->addAttribute("vertPos");
+		toonProg->addAttribute("vertNor");
+		toonProg->addAttribute("vertTex");
 
 		//Init shader for floor
 		floorProg = make_shared<Program>();
@@ -589,6 +639,11 @@ public:
 		shield->resize();
 		shield->init();
 
+		pawn = make_shared<Shape>();
+		pawn->loadMesh(resourceDirectory + "/obj/Pawn.obj");
+		pawn->resize();
+		pawn->init();
+
 		wood = make_shared<Shape>();
 		wood->loadMesh(resourceDirectory + "/obj/Wood.obj");
 		wood->resize();
@@ -837,106 +892,181 @@ public:
 		floorProg->unbind();
 	}
 
-	void drawForest(shared_ptr<MatrixStack> M)
+	void drawForest(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(0);
+		setColor(12, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()) );
 		hex->draw(prog);
 
 		M->pushMatrix();
 		M->scale(vec3(.5, 1.0, .5));
-		SetMaterial(4);
+		setColor(13, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()) );
 		pineForest->draw(prog);
 		M->popMatrix();
 	}
 
-	void drawHills(shared_ptr<MatrixStack> M)
+	void drawHills(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(0);
+		setColor(10, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		hex->draw(prog);
 
 		M->pushMatrix();
 		M->scale(vec3(.5, 1.0, .5));
-		SetMaterial(2);
+		setColor(11, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		hills->draw(prog);
 		M->popMatrix();
 	}
 
-	void drawMountains(shared_ptr<MatrixStack> M)
+	void drawMountains(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(0);
+		setColor(8, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		hex->draw(prog);
 
 		M->pushMatrix();
 		M->scale(vec3(.5, 1.0, .5));
-		SetMaterial(0);
+		setColor(9, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		mountain->draw(prog);
 		M->popMatrix();
 	}
 
-	void drawField(shared_ptr<MatrixStack> M)
+	void drawField(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(0);
+		setColor(6, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		hex->draw(prog);
 
 		M->pushMatrix();
 		M->scale(vec3(.5, 1.0, .5));
-		SetMaterial(2);
+		setColor(7, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		farm->draw(prog);
 		M->popMatrix();
 	}
 
-	void drawPasture(shared_ptr<MatrixStack> M)
+	void drawPasture(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(0);
+		setColor(4, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		hex->draw(prog);
 
 		M->pushMatrix();
 		M->scale(vec3(.5, 1.0, .5));
-		SetMaterial(2);
+		setColor(5, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		pasture->draw(prog);
 		M->popMatrix();
 	}
 
-	void drawDesert(shared_ptr<MatrixStack> M)
+	void drawDesert(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(0);
+		setColor(2, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		hex->draw(prog);
 
 		M->pushMatrix();
 		M->scale(vec3(.5, 1.0, .5));
-		SetMaterial(2);
+		setColor(3, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		pyramid->draw(prog);
 		M->popMatrix();
 	}
 
-	void drawWater(shared_ptr<MatrixStack> M)
+	void drawWater(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(1);
+		setColor(0, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		water->draw(prog);
 	}
 
-	void drawPort(shared_ptr<MatrixStack> M)
+	void drawPort(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
-		SetMaterial(1);
+		setColor(0, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		water->draw(prog);
 		
-		SetMaterial(1);
+		M->pushMatrix();
+		M->scale(.5);
+		setColor(1, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		ship->draw(prog);
+		M->popMatrix();
+	}
+
+	void boardMaterial(shared_ptr<Program> prog)
+	{
+		glUniform3f(prog->getUniform("MatAmb"), 0.25, 0.25, 0.25);
+		glUniform3f(prog->getUniform("MatDif"), 1, 1, 1);
+		glUniform3f(prog->getUniform("MatSpec"), 0.2966, 0.2966, 0.2966);
+		glUniform1f(prog->getUniform("S"), 11);
+	}
+
+	void setColor(int i, shared_ptr<Program> prog)
+	{
+		switch(i)
+		{
+			case 0: //water
+				glUniform3f(prog->getUniform("LightColor"), .0549, .6549, .7098);
+				boardMaterial(prog);
+				break;
+			case 1: //boat
+				glUniform3f(prog->getUniform("LightColor"), .5882, .4078, .2588);
+				boardMaterial(prog);
+				break;
+			case 2: //sand
+				glUniform3f(prog->getUniform("LightColor"), 1, .7451, .3098);
+				boardMaterial(prog);
+				break;
+			case 3: //pyramid
+				glUniform3f(prog->getUniform("LightColor"), .9686, .9059, .7059);
+				boardMaterial(prog);
+				break;
+			case 4: //pasture ground
+				glUniform3f(prog->getUniform("LightColor"), .4824, .7529, .2627);
+				boardMaterial(prog);
+				break;
+			case 5: //fence
+				glUniform3f(prog->getUniform("LightColor"), .6431, .4863, .1098);
+				boardMaterial(prog);
+				break;
+			case 6: //field ground
+				glUniform3f(prog->getUniform("LightColor"), .5176, .3294, .1333);
+				boardMaterial(prog);
+				break;
+			case 7: //wheat
+				glUniform3f(prog->getUniform("LightColor"), .9333, .7294, .1882);
+				boardMaterial(prog);
+				break;
+			case 8: //mountain ground
+				glUniform3f(prog->getUniform("LightColor"), .6588, .902, .8117);
+				boardMaterial(prog);
+				break;
+			case 9: //mountain
+				glUniform3f(prog->getUniform("LightColor"), .6549, .6784, .7294);
+				boardMaterial(prog);
+				break;
+			case 10: //hill ground
+				glUniform3f(prog->getUniform("LightColor"), .302, .4980, .0902);
+				boardMaterial(prog);
+				break;
+			case 11: // hills
+				glUniform3f(prog->getUniform("LightColor"), .851, .3255, .3098);
+				boardMaterial(prog);
+				break;
+			case 12: //forest 
+				glUniform3f(prog->getUniform("LightColor"), .4353, .3098, .1137);
+				boardMaterial(prog);
+				break;
+			case 13: //forest
+				glUniform3f(prog->getUniform("LightColor"), .3608, .7216, .3608);
+				boardMaterial(prog);
+				break;
+
+		}
 	}
 
 	void initPlayers()
@@ -947,6 +1077,13 @@ public:
 		}
 
 		curPlayer = &playerList[curIndex];
+		initLookAt();
+	}
+
+	void initLookAt()
+	{
+		eye = vec3(-2.13, 6.40, 9.77);
+		lookAtPoint = vec3(-2.13, 5.71, 9.04);
 	}
 
 	int doubleBackOrder(int index)
@@ -975,6 +1112,12 @@ public:
 		}
 	}
 
+	void selectMaterial(shared_ptr<Program> prog)
+	{
+		glUniform3f(prog->getUniform("LightColor"), 1, 1, .7294);
+		boardMaterial(prog);
+	}
+
 	int drawPossibleFirstSettlements(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog, int index)
 	{
 		vec3 ray;
@@ -983,6 +1126,8 @@ public:
 
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+
+		setPlayerColor(playerList[index].getColor(), prog);
 
 		for (int i = 0; i < board->getVertices().size(); i++)
 		{
@@ -996,7 +1141,8 @@ public:
 					M->pushMatrix();
 					M->translate(coords);
 					M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
-					SetMaterial(7);
+					//SetMaterial(7);
+					selectMaterial(prog);
 					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 					barn->draw(prog);
 					if (testClick)
@@ -1026,7 +1172,7 @@ public:
 			M->translate(vec3(coords));
 			M->rotate(coords[3], vec3(0, 1, 0));
 			M->scale(vec3(ROAD_SIZE, ROAD_SIZE, ROAD_SIZE));
-			SetMaterial(7);
+			//SetMaterial(7);
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 			road1->draw(prog);
 			if (testClick)
@@ -1051,6 +1197,7 @@ public:
 
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+		selectMaterial(prog);
 
 		for (int i = 0; i < branchRoads.size(); i++)
 		{
@@ -1125,11 +1272,10 @@ public:
 
 				prog->bind();
 				glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+				selectMaterial(prog);
 
 				for (int i = 0; i < possibleVerts.size(); i++)
 				{
-					//std::cout << "Possible spot at: " + std::to_string(possibleVerts[i]) << std::endl;
-					//if () should check that the position is empty
 					int hexIndex = board->vertToHex(possibleVerts[i]);
 					if (hexIndex != -1)
 					{
@@ -1137,7 +1283,7 @@ public:
 						M->pushMatrix();
 						M->translate(coords);
 						M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
-						SetMaterial(7);
+						//SetMaterial(7);
 						glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 						barn->draw(prog);
 						if (testClick)
@@ -1177,7 +1323,7 @@ public:
 		}
 	}
 
-	void drawBuildings(shared_ptr<MatrixStack> M)
+	void drawBuildings(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
 		std::vector<Building> buildings = board->getVertices();
 
@@ -1192,7 +1338,7 @@ public:
 					M->pushMatrix();
 					M->translate(coords);
 					M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
-					setPlayerColor(buildings[i].getColor());
+					setPlayerColor(buildings[i].getColor(), prog);
 					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 					barn->draw(prog);
 					M->popMatrix();
@@ -1219,6 +1365,7 @@ public:
 
 			prog->bind();
 			glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
+			selectMaterial(prog);
 
 			for (int i = 0; i < possibleEdges.size(); i++)
 			{
@@ -1262,7 +1409,7 @@ public:
 		}
 	}
 
-	void drawRoads(shared_ptr<MatrixStack> M)
+	void drawRoads(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
 		std::vector<Road> roads = board->getEdges();
 
@@ -1278,7 +1425,7 @@ public:
 					M->translate(vec3(coords));
 					M->rotate(coords[3], vec3(0, 1, 0));
 					M->scale(vec3(ROAD_SIZE, ROAD_SIZE, ROAD_SIZE));
-					setPlayerColor(roads[i].getColor());
+					setPlayerColor(roads[i].getColor(), prog);
 					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 					road1->draw(prog);
 					M->popMatrix();
@@ -1392,204 +1539,203 @@ public:
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[0]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[1]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[2]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[3]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 
 		//LAYER 2
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[4]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 		//ORE
 			M->pushMatrix();
 			M->translate(hexCoordinates[5]);
-			drawMountains(M);
+			drawMountains(M, prog);
 			M->popMatrix();
 		//WOOL
 			M->pushMatrix();
 			M->translate(hexCoordinates[6]);
-			drawPasture(M);
+			drawPasture(M, prog);
 			M->popMatrix();
 		//WOOD
 			M->pushMatrix();
 			M->translate(hexCoordinates[7]);
-			drawForest(M);
+			drawForest(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[8]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 
 		//LAYER 3
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[9]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 		//WHEAT
 			M->pushMatrix();
 			M->translate(hexCoordinates[10]);
-			drawField(M);
+			drawField(M, prog);
 			M->popMatrix();
 		//BRICK
 			M->pushMatrix();
 			M->translate(hexCoordinates[11]);
-			drawHills(M);
+			drawHills(M, prog);
 			M->popMatrix();
 		//WOOL
 			M->pushMatrix();
 			M->translate(hexCoordinates[12]);
-			drawPasture(M);
+			drawPasture(M, prog);
 			M->popMatrix();
 		//BRICK
 			M->pushMatrix();
 			M->translate(hexCoordinates[13]);
-			drawHills(M);
+			drawHills(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[14]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 
 		//LAYER 4
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[15]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 		//WHEAT
 			M->pushMatrix();
 			M->translate(hexCoordinates[16]);
-			drawField(M);
+			drawField(M, prog);
 			M->popMatrix();
 		//WOOD
 			M->pushMatrix();
 			M->translate(hexCoordinates[17]);
-			drawForest(M);
+			drawForest(M, prog);
 			M->popMatrix();
 		//DESERT
 			M->pushMatrix();
 			M->translate(hexCoordinates[18]);
-			drawDesert(M);
+			drawDesert(M, prog);
 			M->popMatrix();
 		//WOOD
 			M->pushMatrix();
 			M->translate(hexCoordinates[19]);
-			drawForest(M);
+			drawForest(M, prog);
 			M->popMatrix();
 		//ORE
 			M->pushMatrix();
 			M->translate(hexCoordinates[20]);
-			drawMountains(M);
+			drawMountains(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[21]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 
 		//LAYER 5
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[22]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 		//WOOD
 			M->pushMatrix();
 			M->translate(hexCoordinates[23]);
-			drawForest(M);
+			drawForest(M, prog);
 			M->popMatrix();
 		//ORE
 			M->pushMatrix();
 			M->translate(hexCoordinates[24]);
-			drawMountains(M);
+			drawMountains(M, prog);
 			M->popMatrix();
 		//WHEAT
 			M->pushMatrix();
 			M->translate(hexCoordinates[25]);
-			drawField(M);
+			drawField(M, prog);
 			M->popMatrix();
 		//WOOL
 			M->pushMatrix();
 			M->translate(hexCoordinates[26]);
-			drawPasture(M);
+			drawPasture(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[27]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 
 		//LAYER 6
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[28]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 		//BRICK
 			M->pushMatrix();
 			M->translate(hexCoordinates[29]);
-			drawHills(M);
+			drawHills(M, prog);
 			M->popMatrix();
 		//WHEAT
 			M->pushMatrix();
 			M->translate(hexCoordinates[30]);
-			drawField(M);
+			drawField(M, prog);
 			M->popMatrix();
 		//WOOL
 			M->pushMatrix();
 			M->translate(hexCoordinates[31]);
-			drawPasture(M);
+			drawPasture(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[32]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 
 		//LAYER 7
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[33]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[34]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[35]);
-			drawPort(M);
+			drawPort(M, prog);
 			M->popMatrix();
 		//WATER
 			M->pushMatrix();
 			M->translate(hexCoordinates[36]);
-			drawWater(M);
+			drawWater(M, prog);
 			M->popMatrix();
 
-
-			drawBuildings(M);
-			drawRoads(M);
+			drawBuildings(M, prog);
+			drawRoads(M, prog);
 
 		M->popMatrix();
 		
@@ -1602,72 +1748,9 @@ public:
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, value_ptr(V->topMatrix()));
 		V->popMatrix();
 
-		glUniform3f(prog->getUniform("LightColor"), 1, 1, 1);
-		glUniform3f(prog->getUniform("Lpos"), lightPos[0], lightPos[1], lightPos[2]);
-
 		prog->unbind();
 
 		drawFloor(P);
-	}
-
-	void drawHUD(shared_ptr<MatrixStack> P, shared_ptr<Program> prog)
-	{
-		auto MV = make_shared<MatrixStack>();
-		auto M = make_shared<MatrixStack>();
-		auto V = make_shared<MatrixStack>();
-		auto P2 = make_shared<MatrixStack>();
-		vec3 ray;
-		//int width, height;
-		//int width_2 = 0, height_2 = 0;
-
-		//float aspect = width/(float)height;
-
-
-		//glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
-
-		//width = width / 2;
-		//height = height / 2;
-
-		//width_2 = width / 2;
-		//height = height / 2;
-
-		//float x = (2.0f * testClickX) / width - 1.0f;
-		//float y = 1.0f - (2.0f * testClickY) / height;
-
-		//std::cout << "width: " + std::to_string(width) + " height: " + std::to_string(height) << std::endl;
-		if (testClick)
-		{
-			std::cout << "X: " + std::to_string(testClickX) + " Y: " + std::to_string(testClickY) << std::endl;
-			testClick = false;
-		}
-
-		prog->bind();
-		P2->pushMatrix();
-		P2->loadIdentity();
-		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P2->topMatrix()));
-
-			MV->pushMatrix();
-			MV->translate(vec3(0, 0, -.5));
-			MV->rotate(PI / 2, vec3(1, 0, 0));
-			MV->scale(vec3(1, 1, 1));
-			glUniformMatrix4fv(prog->getUniform("MV"), 1, GL_FALSE, value_ptr(MV->topMatrix()));
-			texture0->bind(prog->getUniform("Texture0"));
-			square->draw(prog);
-			if (testClick)
-			{
-				mat4 matrix = MV->topMatrix();
-
-				ray = computeRay(P);
-				if (square->wasHit(ray, eye, matrix))
-				{
-					std::cout << "Hit" << std::endl;
-				}
-				testClick = false;
-			}
-			MV->popMatrix();
-			texture0->unbind();
-
-		prog->unbind();
 	}
 
 	void drawPossibleThief(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
@@ -1956,7 +2039,7 @@ public:
 			M->popMatrix();
 			texture0->unbind();
 
-		//roll sphere
+		//roll
 			M->pushMatrix();
 			M->translate(vec3(-9, 0, 0));
 			M->scale(vec3(1, 1, 1));
@@ -2026,11 +2109,11 @@ public:
 
 		prog->bind();
 			M->pushMatrix();
-			M->translate(vec3(-8, 0, -7));
-			M->scale(2);
-			setPlayerColor(curPlayer->getColor());
+			M->translate(vec3(-8, -1, -5));
+			M->scale(.4);
+			setToonColor(curPlayer->getColor());
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			sphere->draw(prog);
+			pawn->draw(prog);
 			M->popMatrix();
 		prog->unbind();
 	}
@@ -2648,26 +2731,30 @@ public:
 
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
-		SetMaterial(2);
 
 		shapes = std::vector<shared_ptr<Shape>>();
 		matrices = std::vector<mat4>();
 		//2 players
-		M->pushMatrix();
-		M->translate(vec3(-8.5, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(-8.5, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::red);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
-		M->pushMatrix();
-		M->translate(vec3(-7, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(-7, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::blue);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
+
 		if (testClick && wasHit(computeRay(P), eye, matrices, shapes))
 		{
 			MyEnum::print("2");
@@ -2681,29 +2768,36 @@ public:
 		shapes = std::vector<shared_ptr<Shape>>();
 		matrices = std::vector<mat4>();
 		//3 players
-		M->pushMatrix();
-		M->translate(vec3(-4, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(-4, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::red);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
-		M->pushMatrix();
-		M->translate(vec3(-2.5, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(-2.5, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::blue);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
-		M->pushMatrix();
-		M->translate(vec3(-1, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(-1, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::green);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
+
 		if (testClick && wasHit(computeRay(P), eye, matrices, shapes))
 		{
 			MyEnum::print("3");
@@ -2717,37 +2811,45 @@ public:
 		shapes = std::vector<shared_ptr<Shape>>();
 		matrices = std::vector<mat4>();
 		//player 4
-		M->pushMatrix();
-		M->translate(vec3(2, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(2, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::red);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
-		M->pushMatrix();
-		M->translate(vec3(3.5, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(3.5, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::blue);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
-		M->pushMatrix();
-		M->translate(vec3(5, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(5, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::green);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
-		M->pushMatrix();
-		M->translate(vec3(6.5, 0, -4));
-		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		shield->draw(prog);
-		shapes.push_back(shield);
-		matrices.push_back(M->topMatrix());
-		M->popMatrix();
+			M->pushMatrix();
+				M->translate(vec3(6.5, 0, -4));
+				M->scale(.5);
+				setToonColor(MyEnum::white);
+				glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
+				pawn->draw(prog);
+				shapes.push_back(pawn);
+				matrices.push_back(M->topMatrix());
+			M->popMatrix();
 
 		if (testClick && wasHit(computeRay(P), eye, matrices, shapes))
 		{
@@ -2849,14 +2951,19 @@ public:
 		}
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		prog->bind();
+		glUniform3f(prog->getUniform("LightColor"), 0, 0, 0);
+		glUniform3f(prog->getUniform("Lpos"), lightPos[0], lightPos[1], lightPos[2]);
+		prog->unbind();
+
 
 		if (gameState == MyEnum::PICK_NUM_PLAYERS)
 		{
-			pickNumberOfPlayers(P, M, prog);
+			pickNumberOfPlayers(P, M, toonProg);
 		}
 		else
 		{
-			drawCurrentPlayer(P, M, prog);
+			drawCurrentPlayer(P, M, toonProg);
 			drawResources(P, M, prog);
 			drawScene(P, M, prog);
 		}
@@ -3067,8 +3174,19 @@ public:
 		}
 	}
 
-	void setPlayerColor(MyEnum::Color color)
+	void setPickingMaterial(shared_ptr<Program> prog)
 	{
+		glUniform3f(prog->getUniform("MatAmb"), 0.05, 0.0, 0.0);
+		glUniform3f(prog->getUniform("MatDif"), 0.5, 0.4, 0.4);
+		glUniform3f(prog->getUniform("MatSpec"), 0.7, 0.04, 0.04);
+		glUniform1f(prog->getUniform("S"), 10);
+	}
+
+	void setPlayerColor(MyEnum::Color color, shared_ptr<Program> prog)
+	{
+		glUniform3f(prog->getUniform("LightColor"), 1, 1, 1);
+		glUniform3f(prog->getUniform("Lpos"), lightPos[0], lightPos[1], lightPos[2]);
+
 		switch(color)
 		{
 			case MyEnum::red:
@@ -3094,6 +3212,30 @@ public:
 				glUniform3f(prog->getUniform("MatDif"), 0.5, 0.5, 0.5);
 				glUniform3f(prog->getUniform("MatSpec"), 0.7, 0.7, 0.7);
 				glUniform1f(prog->getUniform("S"), 10);
+				break;
+			case MyEnum::empty:
+				MyEnum::print("Passed Empty to setPlayerColor");
+				break;
+		}
+	}
+
+	void setToonColor(MyEnum::Color color)
+	{
+		glUniform3f(toonProg->getUniform("Lpos"), lightPos[0], lightPos[1], lightPos[2]);
+
+		switch(color)
+		{
+			case MyEnum::red:
+				glUniform3f(toonProg->getUniform("inColor"), 1.25, .7412, .7412);
+				break;
+			case MyEnum::blue:
+				glUniform3f(toonProg->getUniform("inColor"), .7882, .7882, 1.25);
+				break;
+			case MyEnum::green:
+				glUniform3f(toonProg->getUniform("inColor"), .8824, 1.21, .8353);
+				break;
+			case MyEnum::white:
+				glUniform3f(toonProg->getUniform("inColor"), 1.25, 1.25, 1.25);
 				break;
 			case MyEnum::empty:
 				MyEnum::print("Passed Empty to setPlayerColor");
