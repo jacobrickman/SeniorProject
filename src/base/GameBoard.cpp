@@ -506,7 +506,7 @@ void GameBoard::diceRoll(Player playerList[], int roll)
 
     for (int i = 0; i < rolledHexes.size(); i++)
     {
-        MyEnum::print(rolledHexes[i]->print());
+        //MyEnum::print(rolledHexes[i]->print());
         rolledHexes[i]->wasRolled(playerList);
     }
 }

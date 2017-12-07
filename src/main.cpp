@@ -28,7 +28,7 @@ Winter 2017 - ZJW (Piddington texture write)
 #define GAMEBOARD_Y 1
 #define SETTLEMENT_SIZE .2
 #define ROAD_SIZE .5
-#define CITY_SIZE .2
+#define CITY_SIZE .5
 #define THIEF_SIZE .2
 #define SPEED .5f
 
@@ -93,6 +93,9 @@ public:
 	shared_ptr<Shape> monopoly;
 	shared_ptr<Shape> victoryPoint;
 	shared_ptr<Shape> pawn;
+	shared_ptr<Shape> buildIcon;
+	shared_ptr<Shape> diceIcon;
+	shared_ptr<Shape> endIcon;
 
 	//Game variables
 	//********************
@@ -645,7 +648,7 @@ public:
 		pawn->init();
 
 		wood = make_shared<Shape>();
-		wood->loadMesh(resourceDirectory + "/obj/Wood.obj");
+		wood->loadMesh(resourceDirectory + "/obj/log.obj");
 		wood->resize();
 		wood->init();
 
@@ -655,7 +658,7 @@ public:
 		brick->init();
 
 		wheat = make_shared<Shape>();
-		wheat->loadMesh(resourceDirectory + "/obj/shieldBlue.obj");
+		wheat->loadMesh(resourceDirectory + "/obj/wheat.obj");
 		wheat->resize();
 		wheat->init();
 
@@ -693,6 +696,21 @@ public:
 		victoryPoint->loadMesh(resourceDirectory + "/obj/decorator_building_ruins.obj");
 		victoryPoint->resize();
 		victoryPoint->init();
+
+		buildIcon = make_shared<Shape>();
+		buildIcon->loadMesh(resourceDirectory + "/obj/buildIcon.obj");
+		buildIcon->resize();
+		buildIcon->init();
+
+		diceIcon = make_shared<Shape>();
+		diceIcon->loadMesh(resourceDirectory + "/obj/dice.obj");
+		diceIcon->resize();
+		diceIcon->init();
+
+		endIcon = make_shared<Shape>();
+		endIcon->loadMesh(resourceDirectory + "/obj/end.obj");
+		endIcon->resize();
+		endIcon->init();
 	}
 
 	void initFloor()
@@ -1057,12 +1075,16 @@ public:
 				glUniform3f(prog->getUniform("LightColor"), .851, .3255, .3098);
 				boardMaterial(prog);
 				break;
-			case 12: //forest 
+			case 12: //forest ground
 				glUniform3f(prog->getUniform("LightColor"), .4353, .3098, .1137);
 				boardMaterial(prog);
 				break;
 			case 13: //forest
 				glUniform3f(prog->getUniform("LightColor"), .3608, .7216, .3608);
+				boardMaterial(prog);
+				break;
+			case 14:
+				glUniform3f(prog->getUniform("LightColor"), 1, 1, 1);
 				boardMaterial(prog);
 				break;
 
@@ -1256,14 +1278,24 @@ public:
 		auto V = make_shared<MatrixStack>();
 		std::vector<int> possibleVerts;
 		vec3 ray;
+		shared_ptr<Shape> building;
 
-		if (type == MyEnum::settlement)
+		if (type != MyEnum::none)
 		{
-			possibleVerts = board->possibleSettlementPositions(curPlayer->getColor());
+			if (type == MyEnum::settlement)
+			{
+				possibleVerts = board->possibleSettlementPositions(curPlayer->getColor());
+				building = barn;
+			}
+			else 
+			{
+				possibleVerts = board->possibleCityPositions(curPlayer->getColor());
+				building = city;
+			}
 
 			if (possibleVerts.size() == 0)
 			{
-				MyEnum::print("No valid posistions for a settlement");
+				MyEnum::print("No valid posistions for a building");
 				gameState = MyEnum::GAME;
 			}
 			else
@@ -1282,24 +1314,44 @@ public:
 						vec3 coords = getBuildingCoordinates(possibleVerts[i], hexCoordinates[hexIndex]);
 						M->pushMatrix();
 						M->translate(coords);
-						M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
-						//SetMaterial(7);
+						if (type == MyEnum::settlement)
+							M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
+						else
+							M->scale(CITY_SIZE);
 						glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-						barn->draw(prog);
+						//barn->draw(prog);
+						building->draw(prog);
 						if (testClick)
 						{
 							ray = computeRay(P);
-							if (barn->wasHit(ray, eye, M->topMatrix()))
+							//if (barn->wasHit(ray, eye, M->topMatrix()))
+							if (building->wasHit(ray, eye, M->topMatrix()))
 							{
-								std::cout << "Build Settlement at " + std::to_string(possibleVerts[i]) << std::endl;
-								if (!board->buildASettlement(possibleVerts[i], curPlayer->getColor()))
+								if (type == MyEnum::settlement)
 								{
-									MyEnum::print("Something wrong with buildASettlement(GameBoard) at vert: " + std::to_string(possibleVerts[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
-								}
+									std::cout << "Build Settlement at " + std::to_string(possibleVerts[i]) << std::endl;
+									if (!board->buildASettlement(possibleVerts[i], curPlayer->getColor()))
+									{
+										MyEnum::print("Something wrong with buildASettlement(GameBoard) at vert: " + std::to_string(possibleVerts[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
+									}
 
-								if (!curPlayer->buildSettlement())
+									if (!curPlayer->buildSettlement())
+									{
+										MyEnum::print("Something wrong with buildSettlement(Player) at vert: " + std::to_string(possibleVerts[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
+									}
+								}
+								else 
 								{
-									MyEnum::print("Something wrong with buildSettlement(Player) at vert: " + std::to_string(possibleVerts[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
+									std::cout << "Build City at " + std::to_string(possibleVerts[i]) << std::endl;
+									if (!board->buildACity(possibleVerts[i], curPlayer->getColor()))
+									{
+										MyEnum::print("Something wrong with buildACity(GameBoard) at vert: " + std::to_string(possibleVerts[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
+									}
+
+									if (!curPlayer->buildCity())
+									{
+										MyEnum::print("Something wrong with buildCity(Player) at vert: " + std::to_string(possibleVerts[i]) + " and color: " + MyEnum::colorToString(curPlayer->getColor()));
+									}	
 								}
 								gameState = MyEnum::GAME;
 								testClick = false;
@@ -1321,6 +1373,13 @@ public:
 				prog->unbind();
 			}
 		}
+/*		else if (type == MyEnum::city)
+		{
+			possibleVerts = board->possibleCityPosistions(curPlayer->getColor());
+
+			if (possibleVerts.size() == )
+		}
+*/
 	}
 
 	void drawBuildings(shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
@@ -1337,10 +1396,17 @@ public:
 					vec3 coords = getBuildingCoordinates(i, hexCoordinates[hexIndex]);
 					M->pushMatrix();
 					M->translate(coords);
-					M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
+					if (buildings[i].getType() == MyEnum::settlement)
+						M->scale(vec3(SETTLEMENT_SIZE, SETTLEMENT_SIZE, SETTLEMENT_SIZE));
+					else
+						M->scale(CITY_SIZE);
+
 					setPlayerColor(buildings[i].getColor(), prog);
 					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-					barn->draw(prog);
+					if (buildings[i].getType() == MyEnum::settlement)
+						barn->draw(prog);
+					else
+						city->draw(prog);
 					M->popMatrix();
 				}
 			}
@@ -1778,7 +1844,7 @@ public:
 				if (board->notWater(y + 3, x + 3) && board->getThiefPos() != board->getHex(x,y))
 				{
 					M->pushMatrix();
-					M->translate(vec3(hexCoordinates[i].x, hexCoordinates[i].y + 1, hexCoordinates[i].z));
+					M->translate(vec3(hexCoordinates[i].x, hexCoordinates[i].y + 1.5, hexCoordinates[i].z));
 					M->scale(vec3(THIEF_SIZE, THIEF_SIZE, THIEF_SIZE));
 					glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 					cap->draw(prog);
@@ -2019,17 +2085,18 @@ public:
 		prog->bind();
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
+		setColor(1, prog);
+
 		//building sphere
 			M->pushMatrix();
-			M->translate(vec3(7, 0, 0));
-			M->scale(vec3(1, 1, 1));
+			M->translate(vec3(-4, 0, 9.5));
+			M->scale(.15);
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			texture0->bind(prog->getUniform("Texture0"));
-			sphere->draw(prog);
+			buildIcon->draw(prog);
 			if (testClick)
 			{
 				ray = computeRay(P);
-				if (sphere->wasHit(ray, eye, M->topMatrix()))
+				if (buildIcon->wasHit(ray, eye, M->topMatrix()))
 				{
 					std::cout << "Build" << std::endl;
 					gameState = MyEnum::BUILDING;
@@ -2037,19 +2104,17 @@ public:
 				}
 			}
 			M->popMatrix();
-			texture0->unbind();
 
 		//roll
 			M->pushMatrix();
-			M->translate(vec3(-9, 0, 0));
-			M->scale(vec3(1, 1, 1));
+			M->translate(vec3(-6, 0, 9));
+			M->scale(80);
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			texture1->bind(prog->getUniform("Texture0"));
-			sphere->draw(prog);
+			diceIcon->draw(prog);
 			if (testClick)
 			{
 				ray = computeRay(P);
-				if (sphere->wasHit(ray, eye, M->topMatrix()))
+				if (diceIcon->wasHit(ray, eye, M->topMatrix()))
 				{
 					std::cout << "Roll" << std::endl;
 					roll();
@@ -2057,13 +2122,12 @@ public:
 				}
 			}
 			M->popMatrix();
-			texture1->unbind();
-		//dev card sphere
+
+	/*	//dev card sphere
 			M->pushMatrix();
 			M->translate(vec3(7, 0, 3));
 			M->scale(vec3(1, 1, 1));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			texture3->bind(prog->getUniform("Texture0"));
 			sphere->draw(prog);
 			if (testClick)
 			{
@@ -2076,18 +2140,19 @@ public:
 				}
 			}
 			M->popMatrix();
-			texture3->unbind();
+		*/
+
 		//end turn sphere
 			M->pushMatrix();
-			M->translate(vec3(-9, 0, 8));
-			M->scale(vec3(1, 1, 1));
+			M->translate(vec3(-2, 0, 8.4));
+			M->rotate(90, vec3(1, 0, 0));
+			M->scale(.9);
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-			texture2->bind(prog->getUniform("Texture0"));
-			sphere->draw(prog);
+			endIcon->draw(prog);
 			if (testClick)
 			{
 				ray = computeRay(P);
-				if (sphere->wasHit(ray, eye, M->topMatrix()))
+				if (endIcon->wasHit(ray, eye, M->topMatrix()))
 				{
 					std::cout << "End Turn" << std::endl;
 					curIndex = (curIndex + 1) % numPlayers;
@@ -2099,7 +2164,6 @@ public:
 				}
 			}
 			M->popMatrix();
-			texture2->unbind();
 		prog->unbind();
 	}
 
@@ -2121,7 +2185,8 @@ public:
 	bool drawWood(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
 		M->pushMatrix();
-		M->scale(.1);
+		M->scale(vec3(.05, .05, .005));
+		setColor(12, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		wood->draw(prog);
 		if (testClick)
@@ -2143,6 +2208,9 @@ public:
 	bool drawBrick(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
 		M->pushMatrix();
+		setColor(11, prog);
+		M->rotate(45, vec3(0, 1, 0));
+		M->scale(vec3(.4, .4, .8));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		brick->draw(prog);
 		if (testClick)
@@ -2164,7 +2232,8 @@ public:
 	bool drawWheat(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
 		M->pushMatrix();
-		M->scale(.5);
+		M->scale(2);
+		setColor(7, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		wheat->draw(prog);
 		if (testClick)
@@ -2186,6 +2255,9 @@ public:
 	bool drawWool(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
 		M->pushMatrix();
+		M->rotate(45, vec3(0, 1, 0));
+		M->scale(.8);
+		setColor(14, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		wool->draw(prog);
 		if (testClick)
@@ -2208,6 +2280,7 @@ public:
 	{
 		M->pushMatrix();
 		M->scale(.5);
+		setColor(9, prog);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 		ore->draw(prog);
 		if (testClick)
@@ -2514,12 +2587,12 @@ public:
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, value_ptr(P->topMatrix()));
 
 		M->pushMatrix();
-		M->translate(vec3(6, 0, 7));
+		M->translate(vec3(5, 0, 5));
 			//draw wood
 			for (int i = 0; i < resources[MyEnum::wood]; i++)
 			{
 				M->pushMatrix();
-				M->translate(vec3(2 * i, 0, 0));
+				M->translate(vec3(i, 0, 0));
 				drawWood(P, M, prog);
 				M->popMatrix();
 			}
@@ -2527,7 +2600,7 @@ public:
 			for (int i = 0; i < resources[MyEnum::brick]; i++)
 			{
 				M->pushMatrix();
-				M->translate(vec3(2 * i, 0, 2));
+				M->translate(vec3(i, 0, 1));
 				drawBrick(P, M, prog);
 				M->popMatrix();
 			}
@@ -2535,7 +2608,7 @@ public:
 			for (int i = 0; i < resources[MyEnum::wheat]; i++)
 			{
 				M->pushMatrix();
-				M->translate(vec3(2 * i, 0, 4));
+				M->translate(vec3(i, 0, 2));
 				drawWheat(P, M, prog);
 				M->popMatrix();
 			}
@@ -2543,7 +2616,7 @@ public:
 			for (int i = 0; i < resources[MyEnum::wool]; i++)
 			{
 				M->pushMatrix();
-				M->translate(vec3(2 * i, 0, 6));
+				M->translate(vec3(i, 0, 3));
 				drawWool(P, M, prog);
 				M->popMatrix();
 			}
@@ -2551,7 +2624,7 @@ public:
 			for (int i = 0; i < resources[MyEnum::ore]; i++)
 			{
 				M->pushMatrix();
-				M->translate(vec3(2 * i, 0, 8));
+				M->translate(vec3(i, 0, 4.5));
 				drawOre(P, M, prog);
 				M->popMatrix();
 			}
@@ -2574,7 +2647,7 @@ public:
 		if (curPlayer->canBuildSettlement())
 		{
 			M->pushMatrix();
-			M->translate(vec3(-4, 0, -6));
+			M->translate(vec3(-5, 0, -6));
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 			barn->draw(prog);
 			if (testClick)
@@ -2612,7 +2685,8 @@ public:
 		if (curPlayer->canBuildCity())
 		{
 			M->pushMatrix();
-			M->translate(vec3(0, 0, -6));
+			M->translate(vec3(1, 0, -6));
+			M->scale(2);
 			glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
 			city->draw(prog);
 			if (testClick)
@@ -2621,14 +2695,14 @@ public:
 				if (city->wasHit(ray, eye, M->topMatrix()))
 				{
 					std::cout << "City" << std::endl;
-					//build city
+					gameState = MyEnum::BUILD_CITY;
 					testClick = false;
 				}
 			}
 			M->popMatrix();
 		}
 		//dev card
-		if (curPlayer->canBuildDevelopmentCard())
+	/*	if (curPlayer->canBuildDevelopmentCard())
 		{
 			M->pushMatrix();
 			M->translate(vec3(2, 0, -6));
@@ -2658,6 +2732,7 @@ public:
 			}
 			M->popMatrix();
 		}
+	*/
 		//cancel
 		M->pushMatrix();
 		M->translate(vec3(4, 0, -6));
@@ -2670,18 +2745,21 @@ public:
 
 	bool drawCancel(shared_ptr<MatrixStack> P, shared_ptr<MatrixStack> M, shared_ptr<Program> prog)
 	{
+		M->pushMatrix();
+		M->rotate(90, vec3(1, 0, 0));
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE,value_ptr(M->topMatrix()));
-		sphere->draw(prog);
+		endIcon->draw(prog);
 		if (testClick)
 		{
 			vec3 ray = computeRay(P);
-			if (sphere->wasHit(ray, eye, M->topMatrix()))
+			if (endIcon->wasHit(ray, eye, M->topMatrix()))
 			{
 				MyEnum::print("Cancel");
 				testClickY = false;
 				return true;
 			}
 		}
+		M->popMatrix();
 
 		return false;
 	}
@@ -2974,7 +3052,7 @@ public:
 		}
 		if (gameState == MyEnum::GAME)
 		{
-			drawTempHUD(P, M, hudProg1);
+			drawTempHUD(P, M, prog);
 			//drawHUD(P, hudProg0);
 			//drawHUD(P, prog);
 		}
@@ -2989,6 +3067,10 @@ public:
 		else if (gameState == MyEnum::BUILD_ROAD)
 		{
 			drawPossibleRoads(P, M, prog, MyEnum::GAME);
+		}
+		else if (gameState == MyEnum::BUILD_CITY)
+		{
+			drawPossibleBuildings(P, M, prog, MyEnum::city);
 		}
 		else if (gameState == MyEnum::PLACE_THIEF)
 		{
